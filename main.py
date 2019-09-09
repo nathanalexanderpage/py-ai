@@ -1,7 +1,8 @@
 # import libraries
-import pandas as pd
 import numpy as np
 import os
+import pandas as pd
+from sklearn.metrics.pairwise import pairwise_distances 
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -47,3 +48,35 @@ ratings_train = pd.read_csv(CSV_FILEPATH_BASE + 'ua.base', sep='\t', names=r_col
 ratings_test = pd.read_csv(CSV_FILEPATH_BASE + 'ua.test', sep='\t', names=r_cols, encoding='latin-1')
 print(ratings_train.shape, ratings_test.shape)
 
+n_users = ratings.user_id.unique().shape[0]
+n_items = ratings.movie_id.unique().shape[0]
+
+print(n_users, n_items)
+data_matrix = np.zeros((n_users, n_items))
+for line in ratings.itertuples():
+    data_matrix[line[1]-1, line[2]-1] = line[3]
+
+print(data_matrix)
+
+from sklearn.metrics.pairwise import pairwise_distances 
+user_similarity = pairwise_distances(data_matrix, metric='cosine')
+item_similarity = pairwise_distances(data_matrix.T, metric='cosine')
+
+user_similarity = pairwise_distances(data_matrix, metric='cosine')
+item_similarity = pairwise_distances(data_matrix.T, metric='cosine')
+
+def predict(ratings, similarity, type='user'):
+    if type == 'user':
+        mean_user_rating = ratings.mean(axis=1)
+        # np.newaxis - mean_user_rating has same format as ratings
+        ratings_diff = (ratings - mean_user_rating[:, np.newaxis])
+        pred = mean_user_rating[:, np.newaxis] + similarity.dot(ratings_diff) / np.array([np.abs(similarity).sum(axis=1)]).T
+    elif type == 'item':
+        pred = ratings.dot(similarity) / np.array([np.abs(similarity).sum(axis=1)])
+    return pred
+
+user_prediction = predict(data_matrix, user_similarity, type='user')
+item_prediction = predict(data_matrix, item_similarity, type='item')
+
+print(user_prediction)
+print(item_prediction)
